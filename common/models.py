@@ -12,6 +12,7 @@ class UserProfile:
     monthly_income: float
     average_transaction: float
     max_normal_transaction: float
+    transaction_std_dev: float
     preferred_start_hour: int
     preferred_end_hour: int
     device_id: str

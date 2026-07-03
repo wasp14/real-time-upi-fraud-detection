@@ -1,0 +1,111 @@
+from common.models import UserProfile
+
+USERS = [
+    UserProfile( 
+        user_id="U001",
+        age=25,
+        occupation="Software Engineer",
+        city="Pune",
+        state="Maharashtra",
+        monthly_income=90000,
+        average_transaction=900,
+        transaction_std_dev = 200,
+        max_normal_transaction=8000,
+        preferred_start_hour=8,
+        preferred_end_hour=22,
+        device_id="DEV001",
+        device_type="Samsung S24",
+        operating_system="Android",
+        network_provider="Jio"
+        ),
+
+    UserProfile(
+        user_id="U002",
+        age=21,
+        occupation="Student",
+        city="Mumbai",
+        state="Maharashtra",
+        monthly_income=15000,
+        average_transaction=300,
+        transaction_std_dev = 100,
+        max_normal_transaction=2500,
+        preferred_start_hour=9,
+        preferred_end_hour=23,
+        device_id="DEV002",
+        device_type="Redmi Note 13",
+        operating_system="Android",
+        network_provider="Airtel"
+    ),    
+
+    UserProfile(
+        user_id="U003",
+        age=25,
+        occupation="Student",
+        city="Trivandram",
+        state="Kerala",
+        monthly_income=10000,
+        average_transaction=300,
+        transaction_std_dev = 100,
+        max_normal_transaction=2500,
+        preferred_start_hour=7,
+        preferred_end_hour=23,
+        device_id="DEV003",
+        device_type="Nothing",
+        operating_system="Android",
+        network_provider="Jio"
+    ),    
+
+    UserProfile(
+        user_id="U005",
+        age=24,
+        occupation="Business Owner",
+        city="Jagruti",
+        state="Bihar",
+        monthly_income=50000,
+        average_transaction=500,
+        transaction_std_dev = 200,
+        max_normal_transaction=5000,
+        preferred_start_hour=6,
+        preferred_end_hour=2,
+        device_id="DEV005",
+        device_type="Samsung S25",
+        operating_system="Android",
+        network_provider="Jio"
+    ),  
+
+    UserProfile(
+        user_id="U004",
+        age=25,
+        occupation="Student",
+        city="Trivandram",
+        state="Kerala",
+        monthly_income=10000,
+        average_transaction=300,
+        transaction_std_dev = 150,
+        max_normal_transaction=2500,
+        preferred_start_hour=7,
+        preferred_end_hour=23,
+        device_id="DEV003",
+        device_type="Nothing",
+        operating_system="Android",
+        network_provider="Jio"
+    ), 
+
+    UserProfile(
+        user_id="U006",
+        age=24,
+        occupation="Student",
+        city="Mumbai",
+        state="Maharashtra",
+        monthly_income=10000,
+        transaction_std_dev = 200,
+        average_transaction=300,
+        max_normal_transaction=2500,
+        preferred_start_hour=7,
+        preferred_end_hour=23,
+        device_id="DEV006",
+        device_type="Asus",
+        operating_system="Android",
+        network_provider="Jio"
+    ),   
+]
