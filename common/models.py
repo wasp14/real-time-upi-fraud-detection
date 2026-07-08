@@ -35,3 +35,13 @@ class Transaction:
     state: str
     device_id: str
     payment_mode: str
+
+
+@dataclass
+class UserProfileForFS:
+    user_id : str
+    avg_amount : int
+    transaction_count : int
+    last_transaction_time : str
+    last_device : str
+    last_city : str
