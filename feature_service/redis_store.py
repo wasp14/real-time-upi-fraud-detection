@@ -9,21 +9,24 @@ class RedisStore:
         return self.r.exists(user_id)
 
     def get_user_profile(self, user_id):
-        return self.r.hgetall(user_id)
+        user_profile_fs = UserProfileForFS(self.r.hgetall(user_id))
+        return user_profile_fs
 
     def set_user(self, transaction):
-        self.r.hset(transaction['sender_id'], 
-        mapping = {"avg_amount": transaction['amount'],
-                   "last_transaction_time": transaction['timestamp'],
+        self.r.hset(transaction.sender_id, 
+        mapping = {"avg_amount": transaction.amount,
+                   "last_transaction_time": transaction.timestamp,
                    "transaction_count": 1,
-                   "last_device": transaction['device_id'],
-                   "last_city": transaction['city']} )  
+                   "last_device": transaction.device_id,
+                   "last_city": transaction.city,
+                   "last_merchant" :  transaction.merchant} )  
       
-    def update_user(self, transaction):
-        self.r.hset(transaction['sender_id'],
-          mapping={ "avg_amount": transaction['avg_amount'],
-                    "last_transaction_time": transaction['timestamp'],
-                    "transaction_count": transaction['transaction_count'],
-                    "last_device": transaction['device_id'],
-                    "last_city": transaction['city']    
+    def update_user(self, sender_id, user_profile_fs):
+        self.r.hset(sender_id,
+          mapping={ "avg_amount": user_profile_fs.avg_amount,
+                    "last_transaction_time": user_profile_fs.last_transaction_time,
+                    "transaction_count": user_profile_fs.transaction_count,
+                    "last_device": user_profile_fs.last_device,
+                    "last_city": user_profile_fs.last_city ,
+                    "last_merchant": user_profile_fs.last_merchant  
                     })

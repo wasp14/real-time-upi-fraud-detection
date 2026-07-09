@@ -45,3 +45,7 @@ class UserProfileForFS:
     last_transaction_time : str
     last_device : str
     last_city : str
+    last_merchant : str
+    known_devices : [str]
+    known_cities : [str]
+    known_merchants : [str]
