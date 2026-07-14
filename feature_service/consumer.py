@@ -1,6 +1,7 @@
 from kafka import KafkaConsumer
 from feature_service.redis_store import RedisStore
 import json
+from common.models import Transaction
 
 
 class FeatureConsumer:
@@ -11,4 +12,4 @@ class FeatureConsumer:
 
     def get_transaction(self):
         for message in self.consumer:   
-            return message.value
+            return Transaction(**message.value)

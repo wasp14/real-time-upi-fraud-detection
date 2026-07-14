@@ -3,6 +3,7 @@ from common.models import UserProfileForFS
 from common.models import Transaction
 from common.models import UserProfileForFS
 from datetime import datetime
+from common.models import  EnrichedTransaction
 
 class Features:
 
@@ -19,9 +20,6 @@ class Features:
 
             
             ratio = (self.transaction.amount /float(self.user_profile_fs.avg_amount))
-            
-
-
 
             return ratio
 
@@ -46,14 +44,40 @@ class Features:
 
 
     def device_changed(self):
-        return if self.transaction.device_id != self.user_profile_fs.last_device 
+        return  self.transaction.device_id != self.user_profile_fs.last_device 
 
     def city_changed(self):
-        return if self.transaction.city != self.user_profile_fs.last_city 
+        return  self.transaction.city != self.user_profile_fs.last_city 
 
-    def merchant_cahnged(self):
-        return if self.transaction.merchant != self.user_profile_fs.last_merchant 
+    def merchant_changed(self):
+        return  self.transaction.merchant != self.user_profile_fs.last_merchant 
 
     def compute_features(self):
+        amount_ratio = self.amount_ratio()
+        time_since_last_txn = self.time_since_last_txn()
+        device_changed = self.device_changed()
+        city_changed = self.city_changed()
+        merchant_changed = self.merchant_changed()
+
+        features = {"amount_ratio" : amount_ratio,
+                    "time_since_last_txn": time_since_last_txn,
+                    "device_changed": device_changed,
+                    "merchant_changed": merchant_changed}
+
+        enriched_transaction = EnrichedTransaction(
+            transaction_id = transaction.transaction_id,
+            sender_id  = self.transaction.sender_id,
+            receiver_id  = self.transaction.receiver_id,
+            amount = self.transaction.amount,
+            amount_ratio = features_dict['amount_ratio'],
+            time_since_last_txn = features_dict['time_since_last_txn'],
+            device_changed = features_dict['device_changed'],
+            city_changed = features_dict['city_changed'],
+            merchant_changed = features_dict['merchant_changed']
+    )            
+        self.update_profile()            
+        return enriched_transaction
+
+
 
 

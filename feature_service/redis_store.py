@@ -9,7 +9,8 @@ class RedisStore:
         return self.r.exists(user_id)
 
     def get_user_profile(self, user_id):
-        user_profile_fs = UserProfileForFS(self.r.hgetall(user_id))
+        profile = self.r.hgetall(user_id)
+        user_profile_fs = UserProfileForFS(**profile)
         return user_profile_fs
 
     def set_user(self, transaction):

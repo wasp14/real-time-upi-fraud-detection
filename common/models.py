@@ -49,3 +49,28 @@ class UserProfileForFS:
     known_devices : [str]
     known_cities : [str]
     known_merchants : [str]
+
+        @classmethod
+    def from_redis(cls, data):
+        return cls(
+            avg_amount=float(data["avg_amount"]),
+            transaction_count=int(data["transaction_count"]),
+            last_transaction_time=data["last_transaction_time"],
+            last_device=data["last_device"],
+            last_city=data["last_city"],
+            last_merchant=data["last_merchant"]
+        )
+
+
+@dataclass
+class EnrichedTransaction:
+    transaction_id : str
+    sender_id  : str
+    receiver_id  : str
+    amount : float
+    amount_ratio : int
+    time_since_last_txn :str
+    device_changed : bool  
+    city_changed : bool
+    merchant_changed : bool
+
