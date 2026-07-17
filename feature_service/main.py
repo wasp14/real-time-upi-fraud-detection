@@ -18,12 +18,13 @@ while True:
 
     print(
             f"""
-        Transaction ID : {transaction.transaction}
+        Transaction ID : {transaction.transaction_id}
         Amount Ratio         : {enriched_transaction.amount_ratio}
         Time Diff       : {enriched_transaction.time_since_last_txn}
         Merchant_Changed : {enriched_transaction.merchant_changed}
         Device_Changed : {enriched_transaction.device_changed}
         Amount         : ₹{enriched_transaction.amount}
         Merchant_changed       : {enriched_transaction.merchant_changed}
+        Txn_Velocity : {enriched_transaction.txn_velocity}
         """
         )

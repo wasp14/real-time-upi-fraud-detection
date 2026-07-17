@@ -1,6 +1,8 @@
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 from dataclasses import asdict
+import time
+import random
 import json
 
 
@@ -11,8 +13,10 @@ class TransactionProducer:
 
 
     def send(self, transaction):
-            self.producer.send("transactions",key = transaction.sender_id, value = asdict(transaction) ) 
+            self.producer.send("transactions_v2",key = transaction.sender_id, value = asdict(transaction) ) 
             self.producer.flush()
+            time.sleep(2)
+            
             
             
     

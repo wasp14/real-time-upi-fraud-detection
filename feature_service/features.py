@@ -3,6 +3,7 @@ from common.models import UserProfileForFS
 from common.models import Transaction
 from common.models import UserProfileForFS
 from datetime import datetime
+import time
 from common.models import  EnrichedTransaction
 
 class Features:
@@ -14,6 +15,7 @@ class Features:
             self.user_profile_fs = self.r.get_user_profile(self.transaction.sender_id)
         else:
             self.r.set_user(transaction)
+            self.user_profile_fs = self.r.get_user_profile(self.transaction.sender_id)
 
         
     def amount_ratio(self): 
@@ -40,7 +42,7 @@ class Features:
             self.user_profile_fs.last_device = self.transaction.device_id
             self.user_profile_fs.last_city = self.transaction.city
             self.user_profile_fs.last_merchant = self.transaction.merchant
-            self.r.update_user(self.transaction.sender_id, self.user_profile_fs)
+            self.r.update_user(self.transaction, self.user_profile_fs)
 
 
     def device_changed(self):
@@ -52,28 +54,44 @@ class Features:
     def merchant_changed(self):
         return  self.transaction.merchant != self.user_profile_fs.last_merchant 
 
+
+    def txn_velocity(self):
+        count = self.r.txn_velocity(self.transaction)
+
+        return count
+
+
+
+
+
+
     def compute_features(self):
         amount_ratio = self.amount_ratio()
         time_since_last_txn = self.time_since_last_txn()
         device_changed = self.device_changed()
         city_changed = self.city_changed()
         merchant_changed = self.merchant_changed()
+        txn_velocity = self.txn_velocity()
 
         features = {"amount_ratio" : amount_ratio,
                     "time_since_last_txn": time_since_last_txn,
                     "device_changed": device_changed,
-                    "merchant_changed": merchant_changed}
+                    "merchant_changed": merchant_changed,
+                    "city_changed" : city_changed,
+                    "txn_velocity" : txn_velocity}
 
         enriched_transaction = EnrichedTransaction(
-            transaction_id = transaction.transaction_id,
+            transaction_id = self.transaction.transaction_id,
             sender_id  = self.transaction.sender_id,
             receiver_id  = self.transaction.receiver_id,
             amount = self.transaction.amount,
-            amount_ratio = features_dict['amount_ratio'],
-            time_since_last_txn = features_dict['time_since_last_txn'],
-            device_changed = features_dict['device_changed'],
-            city_changed = features_dict['city_changed'],
-            merchant_changed = features_dict['merchant_changed']
+            amount_ratio = features['amount_ratio'],
+            time_since_last_txn = features['time_since_last_txn'],
+            device_changed = features['device_changed'],
+            city_changed = features['city_changed'],
+            merchant_changed = features['merchant_changed'],
+            txn_velocity = txn_velocity
+
     )            
         self.update_profile()            
         return enriched_transaction
