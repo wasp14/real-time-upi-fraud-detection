@@ -35,6 +35,7 @@ class Transaction:
     state: str
     device_id: str
     payment_mode: str
+    is_fraud : bool
 
 
 @dataclass
@@ -72,4 +73,5 @@ class EnrichedTransaction:
     city_changed : bool
     merchant_changed : bool
     txn_velocity : int
+    is_fraud : bool
 

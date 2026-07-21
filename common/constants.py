@@ -16,3 +16,20 @@ PAYMENT_MODES = [
     "Wallet",
     "Bank Transfer"
 ]
+
+CITIES = [
+    "Mumbai",
+    "Pune",
+    "Delhi",
+    "Bengaluru",
+    "Hyderabad",
+    "Chennai",
+    "Kolkata",
+    "Ahmedabad"
+]
+
+DEVICE_PREFIXES = [
+    "ANDROID",
+    "IPHONE",
+    "WEB"
+]

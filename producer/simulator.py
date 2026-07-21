@@ -4,13 +4,15 @@ from common.constants import PAYMENT_MODES
 from common.models import Transaction
 import random 
 from datetime import datetime
-
+from producer.fraud_injector import FraudInjector
+import uuid
 
 
 class TransactionSimulator:
     
     def __init__(self):
         self.users = random.sample(USERS, k=2)
+        self.fraud_injector = FraudInjector()
         self.transaction_counter = 1
 
     def get_sender(self):
@@ -49,7 +51,7 @@ class TransactionSimulator:
             PAYMENT_MODE = self.get_payment_mode()
             sigma = SENDER.average_transaction * 0.3
             amount = self.generate_amount(SENDER,sigma)
-            transaction_id = f"TXN{self.transaction_counter:06d}"
+            transaction_id = f"TXN-{uuid.uuid4().hex[:12]}"
             transaction = Transaction(
                 transaction_id = transaction_id,
                 timestamp = datetime.now().isoformat(),
@@ -62,7 +64,10 @@ class TransactionSimulator:
                 state= SENDER.state,
                 device_id= SENDER.device_id,
                 payment_mode= PAYMENT_MODE,
+                is_fraud = False
             )
+            transaction = self.fraud_injector.inject(transaction)
+
             self.transaction_counter += 1
             return transaction    
 

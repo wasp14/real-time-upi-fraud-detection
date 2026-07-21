@@ -1,0 +1,598 @@
+This is actually one of the most important concepts in Docker. Once you understand this, Docker becomes much less "magical."
+
+## Before Docker
+
+Suppose you wanted Kafka.
+
+You had to:
+
+1. Download Kafka.
+2. Install Java.
+3. Configure environment variables.
+4. Create configuration files.
+5. Start Zookeeper.
+6. Start Kafka.
+
+Now suppose you also wanted PostgreSQL.
+
+You'd have to:
+
+1. Download PostgreSQL.
+2. Install it.
+3. Configure it.
+4. Create a database.
+5. Start the PostgreSQL service.
+
+And then Redis...
+
+Each piece of software is installed **directly on your operating system**.
+
+```
+Ubuntu
+│
+├── Kafka
+├── Redis
+├── PostgreSQL
+└── Java
+```
+
+This quickly becomes messy.
+
+---
+
+# Docker changes this
+
+Docker says:
+
+> "Don't install software directly on your machine. Put it inside isolated containers."
+
+Imagine your laptop is an apartment building.
+
+```
+Your Laptop
+│
+├── Apartment 1 → Kafka
+├── Apartment 2 → Redis
+├── Apartment 3 → PostgreSQL
+└── Apartment 4 → Nginx
+```
+
+Each apartment (container) has everything it needs.
+
+Kafka doesn't interfere with Redis.
+
+Redis doesn't interfere with PostgreSQL.
+
+---
+
+# But where does Kafka come from?
+
+This is the important part.
+
+When you write:
+
+```yaml
+services:
+  redis:
+    image: redis:7
+```
+
+or
+
+```yaml
+image: postgres:16
+```
+
+Docker checks:
+
+> "Do I already have this image?"
+
+If not...
+
+```
+Your Laptop
+        │
+        ▼
+Docker Hub
+        │
+ Download Image
+        │
+        ▼
+Store Locally
+        │
+        ▼
+Create Container
+```
+
+---
+
+# What is an Image?
+
+Think of an image as a **template**.
+
+Like a class in Python.
+
+```
+Image
+   │
+   ▼
+Container
+```
+
+Example:
+
+```
+Postgres Image
+
+↓
+
+Container 1
+
+↓
+
+Container 2
+
+↓
+
+Container 3
+```
+
+Many containers can be created from the same image.
+
+---
+
+# Docker Hub
+
+Docker Hub is like GitHub...
+
+but instead of source code...
+
+it stores Docker Images.
+
+For example:
+
+```
+Docker Hub
+
+│
+
+├── redis
+
+├── postgres
+
+├── nginx
+
+├── kafka
+
+└── python
+```
+
+Millions of people use these official images.
+
+---
+
+# What happens when you run
+
+```bash
+docker compose up
+```
+
+Suppose your compose file contains:
+
+```yaml
+services:
+
+  redis:
+    image: redis:7
+
+  postgres:
+    image: postgres:16
+```
+
+Docker internally does something like:
+
+```
+Do I have redis:7 ?
+
+↓
+
+No
+
+↓
+
+Download
+
+↓
+
+Create Container
+
+↓
+
+Start Container
+```
+
+Then
+
+```
+Do I have postgres:16 ?
+
+↓
+
+No
+
+↓
+
+Download
+
+↓
+
+Create Container
+
+↓
+
+Start Container
+```
+
+The next time you run it...
+
+Docker says:
+
+```
+Already downloaded.
+
+↓
+
+Just start the containers.
+```
+
+So it doesn't download them every time.
+
+---
+
+# Where are images stored?
+
+On your machine.
+
+You can check:
+
+```bash
+docker images
+```
+
+You'll probably see something like:
+
+```
+REPOSITORY     TAG
+
+redis          7
+
+postgres       16
+
+kafka          latest
+```
+
+Those are stored locally now.
+
+---
+
+# What is a container then?
+
+A container is a **running instance** of an image.
+
+Exactly like Python.
+
+Python:
+
+```python
+class User:
+    pass
+
+u1 = User()
+u2 = User()
+```
+
+Docker:
+
+```
+Postgres Image
+
+↓
+
+postgres container
+```
+
+The image is like the class.
+
+The container is like the object.
+
+---
+
+# Why didn't you install PostgreSQL?
+
+Because the PostgreSQL executable already exists inside the Docker Image.
+
+Think of the image as a zip file containing:
+
+```
+PostgreSQL Executable
+
++
+
+Configuration
+
++
+
+Libraries
+
++
+
+Linux Filesystem
+```
+
+Docker unpacks it and starts it.
+
+No installation required.
+
+---
+
+# Then why do we expose ports?
+
+Your PostgreSQL container is isolated.
+
+```
+Laptop
+
+↓
+
+Container
+
+↓
+
+Postgres
+```
+
+By default your laptop cannot talk to it.
+
+When you write:
+
+```yaml
+ports:
+
+  - "5432:5432"
+```
+
+You're saying:
+
+```
+Laptop Port 5432
+
+↓
+
+Container Port 5432
+```
+
+Now your Python code can connect using:
+
+```python
+localhost:5432
+```
+
+Even though PostgreSQL is actually running **inside the container**.
+
+---
+
+# Why don't we lose data when the container stops?
+
+If you remove a container...
+
+everything inside it disappears.
+
+That's why we add:
+
+```yaml
+volumes:
+
+  - postgres_data:/var/lib/postgresql/data
+```
+
+Now:
+
+```
+Container
+
+↓
+
+Volume
+
+↓
+
+Hard Disk
+```
+
+The database files live in the volume.
+
+You can destroy the container...
+
+create another one...
+
+and your data is still there.
+
+---
+
+# This is exactly what is happening in your project
+
+```
+Docker Engine
+│
+├── Kafka Container
+│
+├── Redis Container
+│
+└── PostgreSQL Container
+```
+
+Your Python code isn't running inside Docker—it runs on your WSL environment and connects to those services through the exposed ports:
+
+* Kafka → `localhost:9092`
+* Redis → `localhost:6379`
+* PostgreSQL → `localhost:5432`
+
+From your Python program's perspective, it doesn't matter whether PostgreSQL is installed directly on Ubuntu or running in a Docker container. It just connects to `localhost:5432`.
+
+---
+
+## Why companies love Docker
+
+Suppose you give your fraud detection project to a recruiter.
+
+Without Docker, they'd need to install:
+
+* Kafka
+* Redis
+* PostgreSQL
+* Configure all three
+* Match the correct versions
+
+With Docker, they only need:
+
+```bash
+docker compose up -d
+```
+
+In a minute or two, they have the exact same environment you developed against. That's why Docker has become a standard tool in backend and ML engineering: it makes environments reproducible and eliminates the "it works on my machine" problem.
+
+
+
+
+
+
+Perfect. This confirms the issue **100%**.
+
+This message was produced on:
+
+```text
+2026-07-17T11:26:28
+```
+
+which is **before** you added `is_fraud` to the `Transaction` dataclass.
+
+Notice it contains:
+
+```python
+{
+    'transaction_id': ...,
+    'timestamp': ...,
+    'sender_id': ...,
+    ...
+    'payment_mode': 'Wallet'
+}
+```
+
+but **no**:
+
+```python
+'is_fraud'
+```
+
+So your consumer is replaying **old Kafka messages**.
+
+---
+
+# Why is this happening?
+
+Your consumer probably has:
+
+```python
+auto_offset_reset="earliest"
+```
+
+which means:
+
+> "Start reading from the beginning of the topic."
+
+Kafka has retained all those old transactions, so it's feeding them back.
+
+---
+
+# Best solution (Development)
+
+Since you're still developing, **clear the topic** and start fresh.
+
+### 1. Stop Producer
+
+### 2. Stop Feature Service
+
+### 3. Delete the topic
+
+```bash
+docker exec -it kafka kafka-topics.sh \
+--bootstrap-server localhost:9092 \
+--delete \
+--topic transactions
+```
+
+Then recreate it:
+
+```bash
+docker exec -it kafka kafka-topics.sh \
+--bootstrap-server localhost:9092 \
+--create \
+--topic transactions \
+--partitions 1 \
+--replication-factor 1
+```
+
+Do the same for `enriched_transactions` if needed.
+
+---
+
+# Easier option
+
+If topic deletion gives you trouble, simply change the topic name temporarily.
+
+Instead of:
+
+```python
+"transactions"
+```
+
+use:
+
+```python
+"transactions_v2"
+```
+
+in both the producer and consumer.
+
+Kafka treats it as a completely new stream with no old messages.
+
+---
+
+# Temporary workaround
+
+If you don't want to recreate the topic immediately, set:
+
+```python
+auto_offset_reset="latest"
+```
+
+and **change the consumer group**:
+
+```python
+group_id="feature-service-v2"
+```
+
+Changing only `auto_offset_reset` is **not enough** if the consumer group has already committed offsets. A new `group_id` makes Kafka treat it as a fresh consumer.
+
+---
+
+## My recommendation
+
+Since you're moving quickly and are still in development:
+
+1. **Delete both Kafka topics** (`transactions` and `enriched_transactions`).
+2. **Flush Redis** (`FLUSHALL`).
+3. **Empty PostgreSQL** if you've already inserted test data.
+4. Start the producer again.
+
+From this point onward, you'll have a **clean pipeline** with the new schema, and you won't keep running into issues caused by old retained messages. This is a very common part of development with Kafka whenever message schemas evolve.

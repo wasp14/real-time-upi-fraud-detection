@@ -9,5 +9,6 @@ class EnrichedTransactionProducer:
 
 
     def send(self, transaction):
-            self.producer.send("enriched_transaction",key = transaction.sender_id, value = asdict(transaction) ) 
+            self.producer.send("enriched_transaction_v2",key = transaction.sender_id, value = asdict(transaction) ) 
+            print("EnrichedTransaction sent : ", transaction)
             self.producer.flush()

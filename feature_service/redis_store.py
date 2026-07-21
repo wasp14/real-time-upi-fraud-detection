@@ -44,7 +44,7 @@ class RedisStore:
                     "last_city": user_profile_fs.last_city ,
                     "last_merchant": user_profile_fs.last_merchant  
                     })
-
+        print(f"Adding {transaction.transaction_id} to velocity:{transaction.sender_id}")
         self.r.zadd(f"velocity:{transaction.sender_id}",    {
         transaction.transaction_id: time.time()
     })                

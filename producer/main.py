@@ -17,6 +17,7 @@ while True:
         Receiver       : {transaction.receiver_id}
         Amount         : ₹{transaction.amount}
         Merchant       : {transaction.merchant}
+        Is_Fraud       : {transaction.is_fraud}
         """
         )
     time.sleep(0.2)
