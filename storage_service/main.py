@@ -20,7 +20,7 @@ while True:
         amount=transaction.amount,
         amount_ratio=transaction.amount_ratio,
         time_since_last_txn=transaction.time_since_last_txn,
-        transaction_velocity=transaction.txn_velocity,
+        transaction_velocity = transaction.txn_velocity,
         device_changed=transaction.device_changed,
         city_changed=transaction.city_changed,
         merchant_changed=transaction.merchant_changed,

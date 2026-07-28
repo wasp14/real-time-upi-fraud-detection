@@ -1,14 +1,45 @@
 MERCHANTS = [
-    ("Swiggy", "Food"),
-    ("Zomato", "Food"),
-    ("Blinkit", "Grocery"),
     ("Amazon", "E-commerce"),
     ("Flipkart", "E-commerce"),
+    ("Myntra", "Fashion"),
+    ("Ajio", "Fashion"),
+    ("Meesho", "E-commerce"),
+
+    ("Swiggy", "Food Delivery"),
+    ("Zomato", "Food Delivery"),
+
+    ("Blinkit", "Groceries"),
+    ("Zepto", "Groceries"),
+    ("BigBasket", "Groceries"),
+
     ("Uber", "Transport"),
     ("Ola", "Transport"),
+    ("Rapido", "Transport"),
+
     ("BookMyShow", "Entertainment"),
-    ("Reliance Fresh", "Retail"),
-    ("Apollo Pharmacy", "Healthcare")
+    ("Netflix", "Entertainment"),
+    ("Spotify", "Entertainment"),
+
+    ("IRCTC", "Travel"),
+    ("MakeMyTrip", "Travel"),
+
+    ("Apollo Pharmacy", "Healthcare"),
+    ("PharmEasy", "Healthcare"),
+
+    ("Indian Oil", "Fuel"),
+    ("HP Fuel", "Fuel"),
+    ("Bharat Petroleum", "Fuel"),
+
+    ("Jio Recharge", "Telecom"),
+    ("Airtel Recharge", "Telecom"),
+
+    ("Tata Power", "Utilities"),
+    ("MSEDCL", "Utilities"),
+
+    ("LIC", "Insurance"),
+
+    ("Domino's", "Food"),
+    ("McDonald's", "Food")
 ]
 
 PAYMENT_MODES = [

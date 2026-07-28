@@ -55,8 +55,8 @@ class Features:
         return  self.transaction.merchant != self.user_profile_fs.last_merchant 
 
     def txn_velocity(self):
-        count = self.r.txn_velocity(self.transaction)
 
+        count = self.r.txn_velocity(self.transaction)
         return count
 
     def compute_features(self):

@@ -1,4 +1,5 @@
 from producer.profiles import USERS
+from producer.modes import SimulationMode
 from common.constants import MERCHANTS
 from common.constants import PAYMENT_MODES
 from common.models import Transaction
@@ -10,13 +11,21 @@ import uuid
 
 class TransactionSimulator:
     
-    def __init__(self):
+    def __init__(self, mode=SimulationMode.TRAINING):
         self.users = random.sample(USERS, k=2)
         self.fraud_injector = FraudInjector()
         self.transaction_counter = 1
+        self.mode = mode
+        self.velocity_remaining = 0
+        self.velocity_sender = None
 
     def get_sender(self):
+        if self.velocity_remaining > 0:
+            self.velocity_remaining -= 1
+            return self.velocity_sender
+
         return random.choice(USERS)
+
 
     def get_receiver(self, sender):
         while True:
@@ -24,9 +33,12 @@ class TransactionSimulator:
             if receiver.user_id != sender.user_id:
                 return receiver
 
-    def get_merchant(self):
-        MERCHANT = random.choice(MERCHANTS)
-        return MERCHANT
+    def get_merchant(self, sender):
+
+        if random.random() < 0.8:
+            return random.choice(sender.preferred_merchants)
+    
+        return random.choice(MERCHANTS) 
 
     def generate_amount(self,SENDER,sigma):
 
@@ -47,7 +59,7 @@ class TransactionSimulator:
             
             SENDER = self.get_sender()
             RECEIVER = self.get_receiver(SENDER)
-            MERCHANT = self.get_merchant()
+            MERCHANT = self.get_merchant(SENDER)
             PAYMENT_MODE = self.get_payment_mode()
             sigma = SENDER.average_transaction * 0.3
             amount = self.generate_amount(SENDER,sigma)
@@ -66,7 +78,8 @@ class TransactionSimulator:
                 payment_mode= PAYMENT_MODE,
                 is_fraud = False
             )
-            transaction = self.fraud_injector.inject(transaction)
+
+            transaction = self.fraud_injector.inject( transaction, self, SENDER)
 
             self.transaction_counter += 1
             return transaction    

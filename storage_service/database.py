@@ -11,5 +11,5 @@ DATABASE_URL = (
 engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(
-    bind=engine
+    bind = engine
 )

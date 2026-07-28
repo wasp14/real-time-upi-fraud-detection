@@ -10,7 +10,7 @@ class EnrichedTransactionDB(Base):
     __tablename__ = "transactions"
 
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    pid = Column(Integer, primary_key=True, autoincrement=True)
     
     transaction_id = Column(String, unique=True, nullable=False)
 
@@ -22,7 +22,7 @@ class EnrichedTransactionDB(Base):
 
     amount_ratio = Column(Float)
 
-    time_since_last_txn = Numeric(10, 2)
+    time_since_last_txn = Column(Numeric(10, 2))
 
     transaction_velocity = Column(Integer)
 

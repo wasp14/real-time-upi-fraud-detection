@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-
+from enum import Enum
 
 @dataclass
 class UserProfile:
@@ -19,7 +19,20 @@ class UserProfile:
     device_type: str
     operating_system: str
     network_provider: str
+    preferred_merchants: list[tuple[str, str]]
 
+@dataclass
+class Merchant:
+    name: str
+    category: str    
+
+
+class SimulationMode(Enum):
+    NORMAL = "normal"
+    TRAINING = "training"
+    VELOCITY_TEST = "velocity_test"
+    ACCOUNT_TAKEOVER_TEST = "account_takeover_test"
+    MERCHANT_SCAM_TEST = "merchant_scam_test"
 
 
 @dataclass

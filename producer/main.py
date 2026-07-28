@@ -1,8 +1,9 @@
 from producer.simulator import TransactionSimulator
 from producer.producer import TransactionProducer
 import time
+from producer.modes import SimulationMode
 
-simulator = TransactionSimulator()
+simulator = TransactionSimulator(mode=SimulationMode.TRAINING)
 producer = TransactionProducer()
 
 
