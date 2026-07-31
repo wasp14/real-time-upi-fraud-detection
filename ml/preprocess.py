@@ -1,4 +1,5 @@
 import pandas as pd
+
 from sklearn.model_selection import train_test_split
 
 from ml.config import (
@@ -8,39 +9,34 @@ from ml.config import (
     RANDOM_STATE
 )
 
-def load_dataset(csv_path):
-    return pd.read_csv(csv_path)
+
+def load_dataset(path):
+
+    df = pd.read_csv(path)
+
+    return df
 
 
-def get_features_target(df):
-    x = df[FEATURE_COLUMNS]
-    y = df[TARGET]
 
-    return x,y
+def prepare_data(path):
 
-
-def split_dataset(X,Y):
-    
-    return train_test_split(
-        X,
-        y,
-        test_size = TEST_SIZE,
-        random_state = RANDOM_STATE,
-        stratify = y
-    )
-
-
-def prepare_xgboost(csv_path):
-    df = load_dataset(csv_path)
-    X, y  = get_features_target(df)
-    return split_dataset(X,y)
-
-def prepare_isolation_forest(csv_path):
-    
-    df = load_dataset(csv_path)
+    df = load_dataset(path)
 
     X = df[FEATURE_COLUMNS]
-    
+
     y = df[TARGET]
 
-    x_train = X[ y == False]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=TEST_SIZE,
+        random_state=RANDOM_STATE,
+        stratify=y
+    )
+
+    return (
+        X_train,
+        X_test,
+        y_train,
+        y_test
+    )

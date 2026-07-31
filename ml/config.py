@@ -3,6 +3,7 @@ TARGET = 'is_fraud'
 FEATURE_COLUMNS = [
 
     "amount_ratio",
+    "time_since_last_txn",
     "transaction_velocity",
     "device_changed",
     "city_changed",

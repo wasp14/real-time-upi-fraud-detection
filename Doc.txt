@@ -596,3 +596,1702 @@ Since you're moving quickly and are still in development:
 4. Start the producer again.
 
 From this point onward, you'll have a **clean pipeline** with the new schema, and you won't keep running into issues caused by old retained messages. This is a very common part of development with Kafka whenever message schemas evolve.
+
+
+
+
+
+
+
+These are actually **good baseline results**, and they tell us something important about the dataset.
+
+First, there's a small typo in your model initialization:
+
+```python
+eval_metrics="logloss"
+```
+
+should be
+
+```python
+eval_metric="logloss"
+```
+
+That's why XGBoost printed:
+
+```text
+Parameters: { "eval_metrics" } are not used.
+```
+
+---
+
+# Let's interpret the results
+
+### Confusion Matrix
+
+```text
+              Predicted
+              0      1
+Actual 0   11553    52
+Actual 1     377   246
+```
+
+This means:
+
+* ✅ Correctly detected fraud (TP): **246**
+* ❌ Missed fraud (FN): **377**
+* ⚠️ False alarms (FP): **52**
+* ✅ Correctly detected normal (TN): **11,553**
+
+---
+
+# Accuracy: 96.49%
+
+This looks impressive, but fraud detection is an **imbalanced classification** problem.
+
+Imagine a dumb model that predicts every transaction as normal:
+
+```
+Accuracy ≈ 95%
+```
+
+So accuracy alone is not a useful metric here.
+
+---
+
+# Precision: 82.5%
+
+```text
+Precision = TP / (TP + FP)
+```
+
+Out of every transaction your model flagged as fraud:
+
+* **82.5% were actually fraud**
+* Only **17.5% were false alarms**
+
+That's a very good precision.
+
+---
+
+# Recall: 39.5%
+
+```text
+Recall = TP / (TP + FN)
+```
+
+Your model only catches:
+
+```
+246 out of 623 frauds
+≈ 39%
+```
+
+Meaning it **misses 61% of fraudulent transactions**.
+
+For a fraud detection system, this is the biggest weakness right now.
+
+---
+
+# F1 Score: 0.53
+
+The F1 score balances precision and recall.
+
+* Precision: High ✅
+* Recall: Low ❌
+
+So the F1 score ends up in the middle.
+
+---
+
+# Why is recall low?
+
+This is the key question.
+
+I suspect one (or both) of these reasons:
+
+### 1. Class imbalance
+
+Your dataset is:
+
+* Normal: 58,023
+* Fraud: 3,114
+
+Only about **5%** of transactions are fraud.
+
+Without accounting for this imbalance, XGBoost tends to favor predicting the majority class.
+
+### 2. Conservative decision threshold
+
+By default:
+
+```python
+model.predict(X_test)
+```
+
+uses a threshold of **0.5**.
+
+If the model predicts:
+
+```
+Fraud probability = 0.49
+```
+
+it is classified as **normal**, even though it might be suspicious.
+
+Lowering the threshold (e.g., to 0.3) often increases recall, at the cost of more false positives.
+
+---
+
+# First improvement: Handle class imbalance
+
+XGBoost has a parameter designed for this:
+
+```python
+scale_pos_weight
+```
+
+Calculate it like this:
+
+```python
+negative = (y_train == 0).sum()
+positive = (y_train == 1).sum()
+
+scale_pos_weight = negative / positive
+
+print(scale_pos_weight)
+```
+
+For your data it should be roughly:
+
+```
+58023 / 3114 ≈ 18.6
+```
+
+Then initialize the model like:
+
+```python
+model = XGBClassifier(
+    n_estimators=200,
+    learning_rate=0.05,
+    max_depth=5,
+    random_state=42,
+    eval_metric="logloss",
+    scale_pos_weight=18.6
+)
+```
+
+This tells XGBoost:
+
+> "A fraud example is much more valuable than a normal example."
+
+Usually this **improves recall significantly**.
+
+---
+
+# Second improvement: Probability-based predictions
+
+Instead of:
+
+```python
+predictions = model.predict(X_test)
+```
+
+you can get probabilities:
+
+```python
+probabilities = model.predict_proba(X_test)[:, 1]
+```
+
+Then choose your own threshold:
+
+```python
+threshold = 0.3
+predictions = (probabilities >= threshold).astype(int)
+```
+
+This lets you tune the trade-off between:
+
+* Catching more fraud (higher recall)
+* Raising fewer false alarms (higher precision)
+
+---
+
+# Where we are in the project
+
+We're **not done with XGBoost yet**.
+
+I suggest we do this in order:
+
+1. ✅ Baseline model (completed)
+2. **Improve it using `scale_pos_weight`**
+3. Add ROC-AUC and Precision-Recall AUC
+4. Save the trained model with `joblib`
+5. Generate SHAP explanations
+6. Train and compare an Isolation Forest model
+7. Choose the final model for your FastAPI inference service
+
+This approach mirrors how a real fraud detection pipeline is developed: establish a baseline, improve it systematically, and evaluate each change rather than jumping straight into tuning.
+
+
+
+This is one of the best questions you've asked during this project because it gets to the difference between a **portfolio project** and a **production fraud detection system**.
+
+The short answer is:
+
+> **Yes, production systems also deal with imbalanced data and precision–recall tradeoffs. But they solve them very differently than we can in a small project.**
+
+Let's see how.
+
+---
+
+# 1. They have far richer features
+
+Your model currently uses 6 features:
+
+```text
+amount_ratio
+transaction_velocity
+time_since_last_txn
+device_changed
+city_changed
+merchant_changed
+```
+
+A real bank's fraud model might use **200–1000+ features**.
+
+Examples:
+
+### Customer behavior
+
+* Average spend over 7, 30, and 90 days
+* Number of merchants visited today
+* Number of failed PIN attempts
+* Number of new beneficiaries added this week
+* Time since last login
+* Salary credit history
+* Typical transaction hours
+
+---
+
+### Device intelligence
+
+Not just:
+
+```text
+device_changed
+```
+
+but also:
+
+* Device fingerprint
+* Rooted/jailbroken device
+* Emulator detection
+* Browser fingerprint
+* Screen resolution
+* Installed fonts/plugins
+* Cookie history
+
+---
+
+### Network intelligence
+
+* VPN detected?
+* Proxy detected?
+* TOR exit node?
+* IP reputation score
+* ASN (Autonomous System Number)
+* Distance from previous location
+
+---
+
+### Merchant intelligence
+
+Instead of:
+
+```text
+merchant_changed
+```
+
+they have:
+
+* Merchant fraud rate
+* Merchant category
+* Merchant risk score
+* Merchant country
+* Average refund rate
+* Chargeback history
+
+---
+
+### Graph/network features
+
+One of the most powerful ideas in fraud detection.
+
+Imagine this:
+
+```text
+A ---> B
+A ---> C
+A ---> D
+```
+
+Looks normal.
+
+Now:
+
+```text
+1000 users
+
+↓
+
+same receiver
+```
+
+That receiver becomes suspicious.
+
+Banks build graphs of:
+
+* Accounts
+* Devices
+* Phones
+* IPs
+* Merchants
+
+Then use graph algorithms to detect fraud rings.
+
+---
+
+# 2. They don't use just one model
+
+Your project:
+
+```text
+Transaction
+
+↓
+
+XGBoost
+
+↓
+
+Fraud / Not Fraud
+```
+
+A production system often looks like:
+
+```text
+Transaction
+      │
+      ▼
+Rules Engine
+      │
+      ▼
+Feature Store
+      │
+      ▼
+XGBoost
+      │
+      ▼
+Deep Learning
+      │
+      ▼
+Graph Model
+      │
+      ▼
+Risk Engine
+      │
+      ▼
+Decision
+```
+
+Several models contribute to the final risk score.
+
+---
+
+# 3. They don't optimize only one metric
+
+Suppose the model catches:
+
+```
+1000 frauds
+```
+
+but blocks:
+
+```
+50,000 genuine customers.
+```
+
+The bank loses customer trust.
+
+On the other hand:
+
+```
+Miss 1000 frauds
+```
+
+and the bank loses money.
+
+So banks don't optimize just for recall or precision. They optimize for **business outcomes**.
+
+For example:
+
+| Outcome                        | Cost                        |
+| ------------------------------ | --------------------------- |
+| Miss ₹1,000 fraud              | ₹1,000                      |
+| Block a genuine ₹50 payment    | Customer annoyance          |
+| Block a genuine salary payment | Customer may leave the bank |
+
+Different mistakes have different costs.
+
+---
+
+# 4. Human investigators are part of the system
+
+Your project currently does:
+
+```text
+Prediction
+
+↓
+
+Fraud
+```
+
+A bank might do:
+
+```text
+Prediction
+
+↓
+
+Risk Score = 0.87
+
+↓
+
+Send to analyst
+
+↓
+
+Approve / Reject
+```
+
+Only the highest-risk cases are automatically blocked.
+
+Medium-risk cases are reviewed.
+
+---
+
+# 5. They continuously retrain
+
+Fraudsters change behavior.
+
+Today's fraud:
+
+```
+Device changed
+```
+
+Tomorrow:
+
+```
+Same device
+Different merchant
+```
+
+Next month:
+
+```
+Synthetic identity
+```
+
+So banks retrain models regularly—daily, weekly, or monthly depending on the system.
+
+---
+
+# 6. They use ensembles
+
+A final risk score might combine:
+
+```text
+Rules
+
+↓
+
+XGBoost
+
+↓
+
+Neural Network
+
+↓
+
+Graph Neural Network
+
+↓
+
+Anomaly Detection
+
+↓
+
+Final Risk Score
+```
+
+No single model decides everything.
+
+---
+
+# 7. They tune thresholds based on business goals
+
+Remember when we discussed:
+
+```python
+threshold = 0.5
+```
+
+Banks rarely use a single threshold.
+
+For example:
+
+```text
+Risk < 0.20
+
+↓
+
+Approve automatically
+```
+
+```text
+0.20 - 0.70
+
+↓
+
+Ask for OTP
+```
+
+```text
+0.70 - 0.90
+
+↓
+
+Manual review
+```
+
+```text
+> 0.90
+
+↓
+
+Block transaction
+```
+
+This lets them balance fraud prevention with customer experience.
+
+---
+
+# 8. Why your feature importance looks odd
+
+Your model says:
+
+```
+device_changed
+
+↓
+
+84%
+```
+
+In a real production system, it's uncommon for a single feature to dominate to that extent. There can be strong predictors, but the model usually relies on many interacting signals because fraud is complex and attackers adapt.
+
+Your simulator intentionally simplifies the world, which is perfectly reasonable for a learning project. Real transaction data contains much more variability.
+
+---
+
+# Is your project still realistic?
+
+Absolutely.
+
+In fact, you've already implemented several concepts used in production:
+
+| Production Concept            | Your Project            |
+| ----------------------------- | ----------------------- |
+| Streaming ingestion           | ✅ Kafka                 |
+| Feature Store                 | ✅ Redis                 |
+| Real-time feature engineering | ✅                       |
+| Supervised model              | ✅ XGBoost               |
+| Unsupervised model            | 🔜 Isolation Forest     |
+| Model explainability          | 🔜 SHAP                 |
+| Real-time inference           | 🔜 FastAPI              |
+| Monitoring                    | 🔜 Prometheus & Grafana |
+
+That's already a strong architecture.
+
+---
+
+# If you want to make this project stand out even more
+
+After we finish the current pipeline, I'd add **3–5 more behavioral features** rather than chasing a few extra percentage points in model accuracy.
+
+Features like:
+
+* `transactions_last_5_minutes`
+* `receiver_seen_before`
+* `is_night_transaction`
+* `daily_amount_spent`
+* `days_since_device_registered`
+
+These features will make the simulator more realistic and, more importantly, demonstrate that you understand what makes fraud detection systems effective. That's often more valuable in an interview than simply reporting a higher F1 score.
+
+
+Great. Understanding these parameters is much more valuable than just copying them. Let's go through them one by one.
+
+```python
+model = IsolationForest(
+    contamination=0.05,
+    random_state=42,
+    n_estimators=200
+)
+```
+
+---
+
+# 1. `contamination`
+
+This is **the most important parameter** in Isolation Forest.
+
+It tells the algorithm:
+
+> **"Approximately what fraction of my data should be considered anomalies?"**
+
+For your dataset,
+
+* Total transactions = **61,137**
+* Fraud = **3,114**
+
+Fraud percentage:
+
+[
+\frac{3114}{61137} \approx 0.0509
+]
+
+So we set
+
+```python
+contamination = 0.05
+```
+
+meaning
+
+> "Around 5% of transactions are expected to be abnormal."
+
+---
+
+### What happens internally?
+
+Isolation Forest assigns every transaction an **anomaly score**.
+
+Imagine the scores are:
+
+| Transaction | Score |
+| ----------- | ----- |
+| T1          | 0.02  |
+| T2          | 0.11  |
+| T3          | 0.73  |
+| T4          | 0.95  |
+| T5          | 0.35  |
+
+The algorithm sorts them:
+
+```text
+0.02
+0.11
+0.35
+0.73
+0.95
+```
+
+If
+
+```python
+contamination = 0.20
+```
+
+then **20%** (the top 20% most anomalous) are labeled as anomalies.
+
+In this example:
+
+```text
+0.95
+```
+
+would be classified as an anomaly.
+
+---
+
+### If contamination is too small
+
+```python
+contamination = 0.01
+```
+
+Only the most extreme transactions are flagged.
+
+Result:
+
+* High precision
+* Low recall
+
+---
+
+### If contamination is too large
+
+```python
+contamination = 0.20
+```
+
+Now many normal transactions are also flagged.
+
+Result:
+
+* High recall
+* Low precision
+
+This is very similar to lowering the decision threshold in XGBoost.
+
+---
+
+# 2. `n_estimators`
+
+This means:
+
+> **How many isolation trees should the forest build?**
+
+Just like Random Forest builds many decision trees,
+
+Isolation Forest builds many **Isolation Trees**.
+
+```
+            Isolation Forest
+
+        Tree 1
+
+        Tree 2
+
+        Tree 3
+
+        ...
+
+        Tree 200
+```
+
+Each tree looks at a random subset of the data and random features.
+
+The final anomaly score is the average over all trees.
+
+---
+
+### Why use many trees?
+
+One tree may isolate a transaction quickly by chance.
+
+Many trees reduce randomness and produce more stable anomaly scores.
+
+---
+
+### Typical values
+
+| Trees | Meaning             |
+| ----- | ------------------- |
+| 50    | Fast                |
+| 100   | Standard            |
+| 200   | More stable         |
+| 500   | Usually unnecessary |
+
+For your dataset (~61k rows), **200** is a good choice.
+
+---
+
+# 3. `random_state`
+
+Machine learning algorithms often involve randomness.
+
+Isolation Forest randomly chooses:
+
+* features
+* split values
+* samples for each tree
+
+Without
+
+```python
+random_state=42
+```
+
+every run may produce slightly different results.
+
+Example:
+
+Run 1
+
+```text
+Accuracy = 94.8%
+Recall = 46%
+```
+
+Run 2
+
+```text
+Accuracy = 95.3%
+Recall = 50%
+```
+
+Run 3
+
+```text
+Accuracy = 94.9%
+Recall = 48%
+```
+
+---
+
+With
+
+```python
+random_state=42
+```
+
+the randomness is fixed.
+
+Every run produces the same forest and the same evaluation metrics, making experiments reproducible.
+
+---
+
+# Why "42"?
+
+There's nothing mathematically special about 42. It's a long-standing programming tradition (popularized by *The Hitchhiker's Guide to the Galaxy*). You could just as well use:
+
+```python
+random_state=7
+```
+
+or
+
+```python
+random_state=123
+```
+
+as long as you use the same value consistently.
+
+---
+
+# Other useful parameters
+
+These aren't required now, but it's good to know them.
+
+### `max_samples`
+
+How many training samples each tree sees.
+
+```python
+max_samples=256
+```
+
+Each tree trains on 256 randomly selected transactions.
+
+If you set:
+
+```python
+max_samples="auto"
+```
+
+Scikit-learn uses:
+
+```
+min(256, number_of_samples)
+```
+
+Since your dataset has over 61,000 rows, each tree will use 256 randomly chosen samples by default.
+
+This makes the algorithm fast while still being effective.
+
+---
+
+### `max_features`
+
+How many features each tree can use.
+
+You have:
+
+```
+amount_ratio
+time_since_last_txn
+transaction_velocity
+device_changed
+city_changed
+merchant_changed
+```
+
+So there are 6 features.
+
+If:
+
+```python
+max_features=1.0
+```
+
+every tree can use all 6 features.
+
+If:
+
+```python
+max_features=0.5
+```
+
+each tree randomly uses about 3 features.
+
+Random feature selection increases diversity among trees.
+
+---
+
+### `bootstrap`
+
+Whether trees sample **with replacement**.
+
+```python
+bootstrap=True
+```
+
+A transaction can appear multiple times in the same tree's training sample.
+
+```python
+bootstrap=False
+```
+
+Each sampled transaction appears at most once in a tree.
+
+The default is `False`, and it's appropriate for most anomaly detection tasks.
+
+---
+
+## Recommended configuration for your project
+
+```python
+model = IsolationForest(
+    n_estimators=200,      # Build 200 isolation trees
+    contamination=0.05,    # Expect ~5% anomalies
+    random_state=42        # Ensure reproducible results
+)
+```
+
+These defaults are well suited to your dataset and provide a good balance between performance, stability, and simplicity. Once you've trained the first model, we can explore how Isolation Forest actually isolates anomalies using random splits and path lengths—that intuition makes the algorithm much easier to understand than treating it as a black box.
+
+
+Perfect. Now we enter one of the most interesting parts of the project.
+
+**SHAP (SHapley Additive exPlanations)** is used to explain **why** the model made a particular prediction.
+
+---
+
+# Before writing code, understand the intuition
+
+Suppose your XGBoost model predicts:
+
+```text
+Fraud Probability = 0.92
+```
+
+The obvious question is:
+
+> Why 0.92?
+
+XGBoost cannot answer that.
+
+SHAP can.
+
+It tells you **how much each feature contributed** to moving the prediction toward fraud or toward normal.
+
+---
+
+# Imagine this transaction
+
+| Feature             | Value |
+| ------------------- | ----- |
+| amount_ratio        | 4.8   |
+| device_changed      | 1     |
+| city_changed        | 1     |
+| merchant_changed    | 0     |
+| velocity            | 2     |
+| time_since_last_txn | 8 sec |
+
+Without SHAP, the model simply says
+
+```text
+Fraud
+```
+
+With SHAP, it says
+
+| Feature             | Effect |
+| ------------------- | ------ |
+| device_changed      | +0.45  |
+| amount_ratio        | +0.31  |
+| city_changed        | +0.14  |
+| merchant_changed    | -0.02  |
+| velocity            | -0.01  |
+| time_since_last_txn | +0.03  |
+
+Now you know **why**.
+
+---
+
+# How does SHAP know this?
+
+Imagine your prediction starts from the **average fraud probability** in the dataset.
+
+Your fraud rate is about **5%**.
+
+So before looking at any transaction:
+
+```text
+Expected Fraud Probability
+
+↓
+
+5%
+```
+
+Now SHAP asks:
+
+> "What happens if I reveal one feature at a time?"
+
+---
+
+Reveal:
+
+```text
+device_changed = 1
+```
+
+Probability becomes
+
+```text
+5%
+
+↓
+
+41%
+```
+
+Contribution:
+
+```text
++36%
+```
+
+---
+
+Now reveal:
+
+```text
+amount_ratio = 5
+```
+
+Probability becomes
+
+```text
+41%
+
+↓
+
+78%
+```
+
+Contribution:
+
+```text
++37%
+```
+
+---
+
+Reveal:
+
+```text
+city_changed = 1
+```
+
+Probability becomes
+
+```text
+78%
+
+↓
+
+92%
+```
+
+Contribution:
+
+```text
++14%
+```
+
+Those contributions are the SHAP values.
+
+---
+
+# Why is it called SHAP?
+
+It comes from **Shapley Values** in game theory.
+
+Imagine four people lift a heavy table.
+
+Who deserves the most credit?
+
+You can't simply say:
+
+> Alice lifted it.
+
+Everyone contributed.
+
+Shapley values calculate each person's **fair contribution**.
+
+SHAP does the same for features.
+
+Instead of people:
+
+```text
+device_changed
+
+amount_ratio
+
+velocity
+
+city_changed
+```
+
+Each feature "contributes" toward the final prediction.
+
+---
+
+# What will we generate?
+
+There are several SHAP visualizations.
+
+## 1. Summary Plot ⭐⭐⭐⭐⭐
+
+This is the most useful one.
+
+It looks something like:
+
+```text
+device_changed        ●●●●●●●●●
+
+city_changed          ●●●●●●
+
+amount_ratio          ●●●
+
+merchant_changed      ●●
+
+velocity              ●
+
+time_since            ●
+```
+
+This tells us:
+
+* most influential feature
+* least influential feature
+* whether high or low values increase fraud risk
+
+---
+
+## 2. Waterfall Plot ⭐⭐⭐⭐⭐
+
+For one transaction.
+
+```text
+Expected Probability
+
+↓
+
+5%
+
+↓
+
+device_changed
+
++36%
+
+↓
+
+amount_ratio
+
++28%
+
+↓
+
+city_changed
+
++18%
+
+↓
+
+Final
+
+87%
+```
+
+This is fantastic during interviews.
+
+---
+
+## 3. Force Plot
+
+Interactive version of the waterfall.
+
+Very cool visually.
+
+---
+
+## 4. Dependence Plot
+
+Shows relationships such as
+
+```text
+Amount Ratio
+
+↓
+
+Higher ratio
+
+↓
+
+Higher SHAP value
+
+↓
+
+Higher fraud probability
+```
+
+---
+
+# How we'll organize it
+
+We'll create a new file:
+
+```text
+ml/
+    explain.py
+```
+
+It will:
+
+```
+Load saved XGBoost model
+
+↓
+
+Load dataset
+
+↓
+
+Create SHAP Explainer
+
+↓
+
+Generate plots
+
+↓
+
+Save them
+```
+
+---
+
+# Where we'll save outputs
+
+```
+ml/
+
+├── explain.py
+
+├── plots/
+│      summary_plot.png
+│      waterfall_plot.png
+│      dependence_amount_ratio.png
+│      dependence_device_changed.png
+```
+
+---
+
+# Code structure (high level)
+
+```python
+load_model()
+
+↓
+
+load_test_data()
+
+↓
+
+create SHAP explainer
+
+↓
+
+calculate SHAP values
+
+↓
+
+generate plots
+
+↓
+
+save plots
+```
+
+Very clean.
+
+---
+
+# Why this is valuable
+
+Most portfolio projects stop at:
+
+```
+Accuracy = 95%
+```
+
+Few answer:
+
+> **"Why did the model classify this transaction as fraud?"**
+
+By adding SHAP, your project demonstrates:
+
+* Explainable AI (XAI)
+* Model interpretability
+* Production-readiness for regulated domains like banking
+* The ability to debug model behavior
+
+These are all highly relevant in fraud detection.
+
+---
+
+## I suggest we build SHAP incrementally
+
+Instead of trying to generate every visualization at once, we'll proceed in this order:
+
+1. **Load the saved XGBoost model**
+2. **Create the SHAP explainer**
+3. **Generate a Summary Plot** (global feature importance)
+4. **Generate a Waterfall Plot** (explain one fraud prediction)
+5. **Add SHAP explanations to the FastAPI inference service later**, so every prediction can include the top contributing features.
+
+This approach keeps each step understandable and gives you useful artifacts at every stage.
+
+
+Excellent! This is actually a **perfect** waterfall plot because it reflects exactly what we discovered from your feature importance analysis. Once you understand this plot, you'll be able to explain any prediction made by your model.
+
+Let's go through it from left to right.
+
+---
+
+# Step 1: What are we trying to explain?
+
+This graph answers one question:
+
+> **"Why did the model classify this particular transaction as fraud?"**
+
+---
+
+# Step 2: The bottom number
+
+At the bottom you see
+
+```text id="jpr9y7"
+E[f(X)] = -1.827
+```
+
+This is called the **base value** (or expected value).
+
+Think of it like this:
+
+Before looking at **any** transaction, the model starts here.
+
+```
+No Information
+
+↓
+
+Average transaction
+```
+
+Since most transactions are **normal**, XGBoost starts with a prediction leaning toward "Normal".
+
+That's why the base value is negative.
+
+**Important:** This is **not** a probability.
+
+For XGBoost, SHAP shows values on the **log-odds scale** (the raw score before applying the sigmoid function).
+
+---
+
+# Step 3: Each feature pushes the prediction
+
+Now the model starts revealing features one by one.
+
+---
+
+## Feature 1
+
+```
+merchant_changed = 1
+```
+
+Contribution:
+
+```
++0.02
+```
+
+Meaning:
+
+> "This slightly increases the fraud score."
+
+Very small effect.
+
+---
+
+## Feature 2
+
+```
+city_changed = 1
+
+↓
+
++0.11
+```
+
+A little more suspicious.
+
+---
+
+## Feature 3
+
+```
+time_since_last_txn = 160.82
+
+↓
+
+-0.31
+```
+
+Notice this one is **blue**.
+
+Blue means:
+
+> This feature pushed the prediction **toward Normal**.
+
+So a longer time since the previous transaction made the model a little less suspicious.
+
+---
+
+## Feature 4
+
+```
+device_changed = 1
+
+↓
+
++2.15
+```
+
+This is huge.
+
+The model says:
+
+> "A new device is a strong fraud indicator."
+
+This matches your earlier analysis:
+
+* Feature importance ≈ **84%**
+* Fraud rate with `device_changed = 1` ≈ **52%**
+
+---
+
+## Feature 5
+
+```
+amount_ratio = 10.56
+
+↓
+
++6.22
+```
+
+This is enormous.
+
+Let's think about it.
+
+Earlier we found:
+
+Normal average:
+
+```
+1.26
+```
+
+Fraud average:
+
+```
+3.84
+```
+
+Your transaction:
+
+```
+10.56
+```
+
+That's almost **3× higher than the average fraud transaction**.
+
+So the model says:
+
+> "This amount is extremely abnormal."
+
+That's why it contributes **+6.22**.
+
+---
+
+# Step 4: Final prediction
+
+At the top you see
+
+```
+f(x) = 6.363
+```
+
+Again, this is **not** the probability.
+
+It is the **raw output (log-odds)** from XGBoost.
+
+To convert it into a probability, XGBoost applies the sigmoid function.
+
+A value of **6.36** corresponds to a probability extremely close to **1** (well above 99%).
+
+So the model is essentially saying:
+
+> "I'm almost certain this transaction is fraudulent."
+
+---
+
+# Why do some bars go right and others left?
+
+Very simple.
+
+### Red
+
+```
+→ Pushes prediction toward Fraud
+```
+
+### Blue
+
+```
+← Pushes prediction toward Normal
+```
+
+So your transaction looks like:
+
+```
+Base Prediction
+      │
+      ▼
+
+Mostly Normal
+
+↓
+
+Merchant Changed
+
+↓
+
+Slightly suspicious
+
+↓
+
+City Changed
+
+↓
+
+More suspicious
+
+↓
+
+Long Time Since Last Transaction
+
+↓
+
+Less suspicious
+
+↓
+
+Device Changed
+
+↓
+
+Much more suspicious
+
+↓
+
+Huge Amount Ratio
+
+↓
+
+Almost certainly Fraud
+```
+
+---
+
+# The biggest insight
+
+This graph confirms something we suspected from the feature importance.
+
+Look at the contributions:
+
+| Feature             | Contribution |
+| ------------------- | -----------: |
+| amount_ratio        |    **+6.22** |
+| device_changed      |    **+2.15** |
+| time_since_last_txn |        -0.31 |
+| city_changed        |        +0.11 |
+| merchant_changed    |        +0.02 |
+| velocity            |            0 |
+
+This tells us that **for this particular transaction**, the decision was driven primarily by:
+
+1. **Amount Ratio**
+2. **Device Changed**
+
+That's an important distinction:
+
+* **Feature importance** tells you what the model relies on **across the entire dataset**.
+* **SHAP waterfall** tells you why the model made **this one prediction**.
+
+A feature can be very important overall but have almost no effect on a specific transaction if its value is ordinary.
+
+---
+
+# This is exactly what you'd say in an interview
+
+Suppose an interviewer asks:
+
+> "Why was this transaction classified as fraud?"
+
+You could answer:
+
+> "The model starts from the baseline expectation that most transactions are legitimate. It then evaluates the transaction's features. In this case, the amount ratio of **10.56** contributed the most toward the fraud prediction, indicating the transaction amount was much larger than the sender's typical behavior. The fact that the transaction came from a **new device** further increased the fraud score. Although the longer time since the previous transaction slightly reduced suspicion, its effect was much smaller. Overall, the positive contributions outweighed the negative ones, resulting in a very high fraud score."
+
+That's exactly the kind of explanation SHAP is designed to provide, and it's much stronger than simply saying "the model predicted fraud."

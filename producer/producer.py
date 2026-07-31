@@ -15,7 +15,7 @@ class TransactionProducer:
     def send(self, transaction):
             self.producer.send("transactions_v4",key = transaction.sender_id, value = asdict(transaction) ) 
             self.producer.flush()
-            time.sleep(2)
+            time.sleep(0.2)
             
             
             

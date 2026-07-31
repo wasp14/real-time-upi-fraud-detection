@@ -186,3 +186,30 @@ SELECT
     END AS is_fraud
 
 FROM transactions;
+
+
+
+SELECT
+device_changed,
+COUNT(*),
+SUM(CASE WHEN is_fraud = 'TRUE' THEN 1 ELSE 0 END)
+FROM transactions
+GROUP BY device_changed;
+
+
+SELECT
+    is_fraud,
+    AVG(amount_ratio) AS avg_amount_ratio,
+    MIN(amount_ratio) AS min_amount_ratio,
+    MAX(amount_ratio) AS max_amount_ratio
+FROM transactions
+GROUP BY is_fraud;
+
+
+
+SELECT
+    is_fraud,
+    AVG(transaction_velocity) AS avg_velocity,
+    MAX(transaction_velocity) AS max_velocity
+FROM transactions
+GROUP BY is_fraud;
