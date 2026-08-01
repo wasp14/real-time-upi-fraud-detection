@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from common.config import POSTGRES_HOST, POSTGRES_DB,
 
 
 DATABASE_URL = (

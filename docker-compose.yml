@@ -14,12 +14,29 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
+
   redis:
     image: redis:7-alpine
     container_name: redis
     ports:
       - "6379:6379"    
 
+  
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+
+    extra_hosts:
+    - "host.docker.internal:host-gateway"  
+
+    restart: unless-stopped  
 
   postgres:
     image: postgres:16
@@ -35,6 +52,72 @@ services:
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  grafana:
+    image: grafana/grafana-oss
+    container_name: grafana
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      - prometheus
+
+    restart: unless-stopped    
+
+  feature_service:
+    build: .
+    container_name: feature_service
+
+    env_file:
+      - .env
+
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+
+    command: python -m feature_service.main
+
+    depends_on:
+      - kafka
+      - redis   
+
+  producer:
+    build: .
+    env_file:
+      - .env
+
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+    container_name: producer
+
+    command: python -m producer.main
+
+    depends_on:
+     - kafka    
+
+  storage_service:
+    build: .
+
+    container_name: storage_service
+
+    env_file:
+      - .env
+
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      POSTGRES_HOST: postgres
+
+    command: python3 -m storage_service.main
+
+    depends_on:
+      - kafka
+      - postgres   
+
+
+
+  
 
 volumes:
   postgres_data:

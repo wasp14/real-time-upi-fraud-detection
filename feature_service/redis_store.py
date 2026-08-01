@@ -1,12 +1,13 @@
 import redis
 from common.models import UserProfileForFS
 from common.models import Transaction
+from common.config import REDIS_HOST,REDIS_PORT
 import time
 
 
 class RedisStore:
     def __init__(self):
-        self.r = redis.Redis(host = 'localhost', port = 6379, decode_responses = True)
+        self.r = redis.Redis(host = REDIS_HOST, port = REDIS_PORT, decode_responses = True)
 
     def profile_exists(self, user_id):
         return self.r.exists(user_id)

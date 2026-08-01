@@ -1,8 +1,14 @@
 from kafka import KafkaConsumer
 import json
 from inference_service.service import FraudDetectionService
+from inference_service.metrics_server import start_metrics_server
+
+
+start_metrics_server()
 
 fraud_detection_service = FraudDetectionService()
+
+
 
 consumer = KafkaConsumer(
     "enriched_transaction_v2",
