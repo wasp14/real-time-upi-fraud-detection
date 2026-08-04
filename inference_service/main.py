@@ -6,7 +6,7 @@ from inference_service.schema import (
     PredictionResponse
 )
 
-predictor = FraudPredictor()
+
 
 app = FastAPI(
     title = "Fraud Detection"

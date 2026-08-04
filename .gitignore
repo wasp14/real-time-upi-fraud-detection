@@ -39,3 +39,5 @@ kafka-data/
 
 # Redis
 dump.rdb
+
+context.md

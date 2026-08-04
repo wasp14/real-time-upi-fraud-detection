@@ -1,8 +1,9 @@
 from storage_service.consumer import StorageConsumer
 from storage_service.database import SessionLocal
 from storage_service.models import EnrichedTransactionDB
+from storage_service.init_db import init_db
 
-
+init_db()
 consumer = StorageConsumer()
 
 

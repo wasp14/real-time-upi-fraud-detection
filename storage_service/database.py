@@ -1,11 +1,20 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from common.config import POSTGRES_HOST, POSTGRES_DB,
+from common.config import (
+    POSTGRES_HOST,
+    POSTGRES_PORT,
+    POSTGRES_DB,
+    POSTGRES_USER,
+    POSTGRES_PASSWORD,
+)
 
 
 DATABASE_URL = (
-    "postgresql://fraud_user:"
-    "fraud_password@localhost:5432/fraud_db"
+    f"postgresql://{POSTGRES_USER}:"
+    f"{POSTGRES_PASSWORD}@"
+    f"{POSTGRES_HOST}:"
+    f"{POSTGRES_PORT}/"
+    f"{POSTGRES_DB}"
 )
 
 

@@ -3556,3 +3556,142 @@ The exact same environment starts on your laptop, a teammate's machine, a CI ser
 Containerizing the project isn't just about using Docker because it's popular. It demonstrates that you understand **packaging**, **dependency isolation**, **configuration management**, and **service orchestration**—all of which are valuable engineering skills.
 
 Once we've finished this, you'll not only have a working fraud detection platform, but you'll also be able to explain **why each Docker component exists** and how they fit together, which is exactly the kind of discussion interviewers often look for.
+
+
+Excellent. This confirms the root cause.
+
+The key line is:
+
+```text
+localhost:9092 (id: 1 rack: null isFenced: false)
+```
+
+That means **Kafka is advertising itself as `localhost:9092`**.
+
+Here's what is happening:
+
+```
+Producer Container
+       │
+       │ bootstrap to kafka:9092 ✅
+       ▼
+Kafka Broker
+       │
+       │ Metadata response:
+       │ "My address is localhost:9092"
+       ▼
+Producer
+       │
+       │ Tries localhost:9092
+       ▼
+Producer container itself ❌
+```
+
+That's exactly why you get:
+
+```text
+KafkaTimeoutError: Failed to update metadata
+```
+
+---
+
+# The fix
+
+Change your Kafka service to advertise itself as `kafka`, not `localhost`.
+
+Replace these two lines:
+
+```yaml
+KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+```
+
+with
+
+```yaml
+KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+```
+
+Also add:
+
+```yaml
+hostname: kafka
+```
+
+so your Kafka service becomes:
+
+```yaml
+kafka:
+  image: apache/kafka:4.1.0
+  container_name: kafka
+  hostname: kafka
+
+  ports:
+    - "9092:9092"
+
+  environment:
+    KAFKA_NODE_ID: 1
+    KAFKA_PROCESS_ROLES: broker,controller
+
+    KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+    KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+
+    KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+    KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+    KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+```
+
+---
+
+# Then recreate Kafka completely
+
+Because the broker metadata is persisted, don't just restart the container.
+
+Run:
+
+```bash
+docker compose down -v
+```
+
+Then:
+
+```bash
+docker compose up -d kafka
+```
+
+Wait about 15–20 seconds.
+
+Then verify what Kafka is advertising:
+
+```bash
+docker exec -it kafka /opt/kafka/bin/kafka-broker-api-versions.sh \
+  --bootstrap-server localhost:9092
+```
+
+If everything is correct, the first line should now be:
+
+```text
+kafka:9092 (id: 1 ...)
+```
+
+**not**
+
+```text
+localhost:9092
+```
+
+Only after that should you run:
+
+```bash
+docker compose up --build producer
+```
+
+---
+
+## One more thing
+
+Before we proceed further, I'd also like to see your `common/config.py` after this is fixed. Once the Producer is working, we'll do a quick cleanup so the same configuration approach is used consistently by the Feature Service, Storage Service, and Inference Service. That will make the rest of the dockerization much smoother.

@@ -1,4 +1,5 @@
 from kafka import KafkaConsumer
+from common.config import KAFKA_BOOTSTRAP_SERVERS
 import json
 from common.models import EnrichedTransaction
 class StorageConsumer:
@@ -6,7 +7,7 @@ class StorageConsumer:
 
         self.consumer = KafkaConsumer(
             "enriched_transaction_v2",
-            bootstrap_servers ="localhost:9092",
+            bootstrap_servers =KAFKA_BOOTSTRAP_SERVERS,
             value_deserializer = lambda m: json.loads(
                 m.decode("utf-8")
             ),
