@@ -11,9 +11,23 @@ on:
 
 jobs:
   test:
+
     runs-on: ubuntu-latest
 
+    env:
+      KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: fraud_db
+      POSTGRES_USER: fraud_user
+      POSTGRES_PASSWORD: fraud_password
+      PROMETHEUS_PORT: 8001
+      MODEL_DIR: ml/models
+
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
