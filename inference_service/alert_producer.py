@@ -1,4 +1,5 @@
 import json
+import time
 from kafka import KafkaProducer
 from common.config import KAFKA_BOOTSTRAP_SERVERS
 
@@ -17,6 +18,7 @@ class AlertProducer:
     def publish_alert(self, alert):
         self.producer.send(
             "fraud_alerts",
+            key = alert["transaction_id"],
             value = alert
         )
 
