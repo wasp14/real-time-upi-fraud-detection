@@ -7,9 +7,16 @@ from common.models import Transaction
 
 class FeatureConsumer:
     def __init__(self):
-        self.consumer = KafkaConsumer('transactions_v4', bootstrap_servers = KAFKA_BOOTSTRAP_SERVERS, value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-            group_id="feature-service-dev",
-            auto_offset_reset="latest")
+        while True:
+            try:
+                self.consumer = KafkaConsumer('transactions_v4', bootstrap_servers = KAFKA_BOOTSTRAP_SERVERS, value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+                    group_id="feature-service-dev",
+                    auto_offset_reset="latest")
+                break
+            except Exception:
+                print("Waiting for Kafka..")
+                time.sleep(5) 
+
 
     def get_transaction(self):
         for message in self.consumer:   

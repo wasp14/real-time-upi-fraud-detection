@@ -17,7 +17,7 @@ class FraudPredictor:
 
     def prepare_data(self, features):
         df = pd.DataFrame(
-            [features], FEATURE_COLUMNS
+            [features], columns = FEATURE_COLUMNS
         )
         return df
 
@@ -54,9 +54,7 @@ class FraudPredictor:
         probability = self.model.predict_proba(input_df)[0][1]    
         prediction = self.model.predict(input_df)[0]
 
-        feature_impact = self.explain(input_df)
         
-
         return {
             "prediction" : "Fraud" if prediction == 1 else "Normal",
             "probability" : round(float(probability),2),

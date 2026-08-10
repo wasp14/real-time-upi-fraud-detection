@@ -5,6 +5,12 @@ services:
     hostname: kafka
     ports:
       - "9092:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s  
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -20,7 +26,13 @@ services:
     image: redis:7-alpine
     container_name: redis
     ports:
-      - "6379:6379"    
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10  
+     
 
   
   prometheus:
@@ -42,6 +54,11 @@ services:
   postgres:
     image: postgres:16
     container_name: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraud_user -d fraud_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10 
 
     environment:
       POSTGRES_USER: fraud_user
@@ -80,8 +97,10 @@ services:
     command: python -m feature_service.main
 
     depends_on:
-      - kafka
-      - redis   
+      kafka:
+        condition: service_healthy  
+      redis:
+        condition: service_healthy  
 
   producer:
     build: .
@@ -96,7 +115,8 @@ services:
     command: python -m producer.main
 
     depends_on:
-     - kafka    
+      kafka:
+        condition: service_healthy   
 
   storage_service:
     build: .
@@ -113,12 +133,15 @@ services:
     command: python3 -m storage_service.main
 
     depends_on:
-      - kafka
-      - postgres   
+      kafka:
+        condition: service_healthy  
+      postgres:
+        condition: service_healthy
+
 
   inference_service:
     build: .
-    
+    container_name: inference_service
     env_file:
       - .env
 
@@ -128,19 +151,26 @@ services:
     command: python3 -m inference_service.main  
 
     depends_on:
-    - kafka
-    -  redis
-    -  feature_service
+      kafka:
+        condition: service_healthy  
 
-  kafka_tools:
+
+  alert_consumer_service:
     build: .
-    command: python scripts/clean.sh
+    container_name: alert_consumer_service
+    env_file:
+      - .env
+
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092  
+
+    command: python3 -m inference_service.alert_consumer  
+
     depends_on:
-      - kafka    
-
-
-
+      kafka:
+        condition: service_healthy  
   
 
+    
 volumes:
   postgres_data:

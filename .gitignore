@@ -19,6 +19,7 @@ env/
 
 # Pytest
 .pytest_cache/
+__pycache__/
 
 # Build
 build/
@@ -41,3 +42,5 @@ kafka-data/
 dump.rdb
 
 context.md
+
+Doc.txt

@@ -1,34 +1,36 @@
-from fastapi import FastAPI
-
-from inference_service.predictor import FraudPredictor
-from inference_service.schema import (
-    TransactionFeatures,
-    PredictionResponse
-)
+from kafka import KafkaConsumer
+import json
+from inference_service.service import FraudDetectionService
+from common.config import KAFKA_BOOTSTRAP_SERVERS
+from inference_service.metrics_server import start_metrics_server
 
 
+start_metrics_server()
 
-app = FastAPI(
-    title = "Fraud Detection"
+fraud_detection_service = FraudDetectionService()
 
-)
+while True:
+    try:
+        consumer = KafkaConsumer(
+            "enriched_transaction_v2",
+            bootstrap_servers = KAFKA_BOOTSTRAP_SERVERS,
+            value_deserializer =  lambda m : json.loads(m.decode("utf-8")),
+            auto_offset_reset = "latest",
+            group_id = "inference_service",
 
-predictor = FraudPredictor()
+        )
+        break
+    except Exception:
+        print("Waiting for Kafka..")
+        time.sleep(5)
 
-@app.get("/health")
-def health():
-    return {
-        "status" : "healthy"
-    }
 
-@app.post(
-    "/predict",
-    response_model = PredictionResponse
-)
-def predict(
-    transaction: TransactionFeatures
-):
+for message in consumer:
+    transaction = message.value
+    print("="*60)
+    prediction = fraud_detection_service.process_transaction(transaction)
+    
 
-    prediction  = predictor.predict(transaction.model_dump())
+    
 
-    return prediction
+
