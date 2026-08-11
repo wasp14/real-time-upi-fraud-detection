@@ -62,14 +62,14 @@ jobs:
       
       - name: Login to Azure Container Registry
         run: |
-          az acr login --name fraud-detector-registry
+          az acr login --name frauddetectorregistryandimages
 
       - name: Tag Docker image
         run: |
           docker tag fraud-detector \
-            fraud-detector-registry.azurecr.io/fraud-detector:${{ github.sha }}   
+            frauddetectorregistryandimages.azurecr.io/fraud-detector:${{ github.sha }}   
 
       - name: Push Docker image
         run: |
           docker push \
-            fraud-detector-registry.azurecr.io/fraud-detector:${{ github.sha }}
+            frauddetectorregistryandimages.azurecr.io/fraud-detector:${{ github.sha }}
