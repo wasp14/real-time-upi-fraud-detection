@@ -8,6 +8,8 @@ __pycache__/
 venv/
 env/
 
+
+.ssh/
 # VS Code
 .vscode/
 
@@ -44,3 +46,9 @@ dump.rdb
 context.md
 
 Doc.txt
+
+.env
+.ssh
+ssh
+
+.ssh
