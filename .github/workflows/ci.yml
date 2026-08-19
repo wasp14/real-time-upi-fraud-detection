@@ -87,7 +87,7 @@ jobs:
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
 
           script: |
-            cd ~/fraud_detector
+            cd ~/fraud_detector_engine
 
             az login --identity
 
