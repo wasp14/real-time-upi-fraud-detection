@@ -73,3 +73,28 @@ jobs:
         run: |
           docker push \
             frauddetectorregistryandimages.azurecr.io/fraud-detector:${{ github.sha }}
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+
+          script: |
+            cd ~/fraud_detector
+
+            az login --identity
+
+            az acr login --name frauddetectorregistryandimages
+
+            export IMAGE_TAG=${{ github.sha }}
+
+            docker pull frauddetectorregistryandimages.azurecr.io/fraud-detector:$IMAGE_TAG
+
+            docker compose -f docker-compose.azure.yml up -d
