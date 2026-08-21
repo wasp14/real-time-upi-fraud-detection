@@ -97,4 +97,4 @@ jobs:
 
             docker pull frauddetectorregistryandimages.azurecr.io/fraud-detector:$IMAGE_TAG
 
-            docker compose -f docker-compose.azure.yml up -d
+            docker compose -f docker-compose.azure.yml up -d 
